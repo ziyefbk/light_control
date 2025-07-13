@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 三组RGB灯控制</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #2ecc71;
+      --accent-color: #e74c3c;
+      --dark-color: #34495e;
+      --light-color: #ecf0f1;
+      --shadow: 0 4px 8px rgba(0,0,0,0.1);
+      --transition: all 0.3s ease;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background-color: var(--dark-color);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    
+    h2 {
+      margin: 0;
+    }
+    
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    }
+    
+    .card h3 {
+      color: var(--dark-color);
+      margin-top: 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    /* 灯带控制卡片水平排列 */
+    .led-controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .led-card {
+      flex: 1;
+    }
+    
+    .control-group {
+      display: grid;
+      grid-template-columns: 30px 1fr 30px;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    
+    label {
+      display: inline-block;
+      font-weight: bold;
+      color: var(--dark-color);
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 8px;
+      border-radius: 5px;
+      background: #ddd;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: var(--dark-color);
+    }
+    
+    input[type="range"].r-slider::-webkit-slider-thumb {
+      background: var(--accent-color);
+    }
+    
+    input[type="range"].g-slider::-webkit-slider-thumb {
+      background: var(--secondary-color);
+    }
+    
+    input[type="range"].b-slider::-webkit-slider-thumb {
+      background: var(--primary-color);
+    }
+    
+    .value-display {
+      width: 30px;
+      text-align: center;
+      font-weight: bold;
+    }
+    
+    .button-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: var(--transition);
+      min-width: 120px;
+      margin: 0 5px;
+    }
+    
+    button:hover {
+      background-color: var(--dark-color);
+      transform: translateY(-2px);
+    }
+    
+    button.set-btn {
+      background-color: var(--secondary-color);
+    }
+    
+    button.refresh-btn {
+      background-color: var(--primary-color);
+    }
+    
+    button.toggle-btn {
+      background-color: var(--dark-color);
+    }
+    
+    .temp-control {
+      margin-top: 30px;
+    }
+    
+    .temp-display {
+      font-size: 24px;
+      margin: 20px 0;
+      text-align: center;
+      font-weight: bold;
+      color: var(--dark-color);
+    }
+    
+    .update-status {
+      font-size: 14px;
+      color: #666;
+      font-style: italic;
+    }
+    
+    .temp-set {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    input[type="number"] {
+      width: 80px;
+      padding: 10px;
+      font-size: 18px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      text-align: center;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      
+      /* 在移动设备上垂直排列 */
+      .led-controls {
+        flex-direction: column;
+      }
+      
+      .temp-set {
+        flex-direction: column;
+      }
+      
+      .button-row {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      button {
+        width: 100%;
+        margin: 5px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h2>ESP32 智能控制系统</h2>
+    </header>
+    
+    <div class="led-controls">
+      <div class="card led-card">
+        <h3>灯带1 (GPIO2)</h3>
+        <div class="control-group">
+          <label>R</label>
+          <input type="range" min="0" max="255" id="r1" value="0" class="r-slider">
+          <span id="rv1" class="value-display">0</span>
+        </div>
+        <div class="control-group">
+          <label>G</label>
+          <input type="range" min="0" max="255" id="g1" value="0" class="g-slider">
+          <span id="gv1" class="value-display">0</span>
+        </div>
+        <div class="control-group">
+          <label>B</label>
+          <input type="range" min="0" max="255" id="b1" value="0" class="b-slider">
+          <span id="bv1" class="value-display">0</span>
+        </div>
+      </div>
+  
+      <div class="card led-card">
+        <h3>灯带2 (GPIO4)</h3>
+        <div class="control-group">
+          <label>R</label>
+          <input type="range" min="0" max="255" id="r2" value="0" class="r-slider">
+          <span id="rv2" class="value-display">0</span>
+        </div>
+        <div class="control-group">
+          <label>G</label>
+          <input type="range" min="0" max="255" id="g2" value="0" class="g-slider">
+          <span id="gv2" class="value-display">0</span>
+        </div>
+        <div class="control-group">
+          <label>B</label>
+          <input type="range" min="0" max="255" id="b2" value="0" class="b-slider">
+          <span id="bv2" class="value-display">0</span>
+        </div>
+      </div>
+  
+      <div class="card led-card">
+        <h3>灯带3 (GPIO5)</h3>
+        <div class="control-group">
+          <label>R</label>
+          <input type="range" min="0" max="255" id="r3" value="0" class="r-slider">
+          <span id="rv3" class="value-display">0</span>
+        </div>
+        <div class="control-group">
+          <label>G</label>
+          <input type="range" min="0" max="255" id="g3" value="0" class="g-slider">
+          <span id="gv3" class="value-display">0</span>
+        </div>
+        <div class="control-group">
+          <label>B</label>
+          <input type="range" min="0" max="255" id="b3" value="0" class="b-slider">
+          <span id="bv3" class="value-display">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button onclick="setLED()" class="set-btn">设置灯光</button>
+    </div>
+
+    <div class="card temp-control">
+      <h3>温度控制</h3>
+      <div class="temp-display">
+        <div>当前温度: <span id="current-temp">--</span> °C</div>
+        <div class="update-status"><span id="update-status">(自动更新中...)</span></div>
+      </div>
+      
+      <div class="temp-set">
+        <label for="target-temp">设定温度:</label>
+        <input type="number" id="target-temp" min="16" max="30" value="24" step="0.5">
+        <span>°C</span>
+        <button onclick="setTemperature()" class="set-btn">设置温度</button>
+      </div>
+      
+      <div class="button-row">
+        <button onclick="getTemperature()" class="refresh-btn">立即刷新</button>
+        <button id="toggle-auto" onclick="toggleAutoUpdate()" class="toggle-btn">停止自动更新</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 实时显示数值
+    for(let i=1;i<=3;i++){
+      ['r','g','b'].forEach(c=>{
+        let slider = document.getElementById(c+i);
+        let val = document.getElementById(c+'v'+i);
+        slider.oninput = ()=>{ val.textContent = slider.value; };
+      });
+    }
+    function setLED() {
+      let params = [];
+      for(let i=1;i<=3;i++){
+        params.push('r'+i+'='+document.getElementById('r'+i).value);
+        params.push('g'+i+'='+document.getElementById('g'+i).value);
+        params.push('b'+i+'='+document.getElementById('b'+i).value);
+      }
+      let url = '/set?' + params.join('&');
+      fetch(url)
+        .then(res => res.text())
+        .then(txt => alert('设置成功'));
+    }
+    
+    // 温度自动更新相关
+    let tempUpdateInterval = null;
+    const updateInterval = 5000; // 5秒更新一次
+    
+    // 获取当前温度
+    function getTemperature() {
+      fetch('/temperature')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('current-temp').textContent = data.temperature;
+        })
+        .catch(err => {
+          console.error('获取温度失败:', err);
+          document.getElementById('update-status').textContent = '(更新失败)';
+        });
+    }
+    
+    // 开始自动更新
+    function startAutoUpdate() {
+      if (!tempUpdateInterval) {
+        tempUpdateInterval = setInterval(getTemperature, updateInterval);
+        document.getElementById('update-status').textContent = '(自动更新中...)';
+        document.getElementById('toggle-auto').textContent = '停止自动更新';
+      }
+    }
+    
+    // 停止自动更新
+    function stopAutoUpdate() {
+      if (tempUpdateInterval) {
+        clearInterval(tempUpdateInterval);
+        tempUpdateInterval = null;
+        document.getElementById('update-status').textContent = '(已停止自动更新)';
+        document.getElementById('toggle-auto').textContent = '开始自动更新';
+      }
+    }
+    
+    // 切换自动更新状态
+    function toggleAutoUpdate() {
+      if (tempUpdateInterval) {
+        stopAutoUpdate();
+      } else {
+        startAutoUpdate();
+      }
+    }
+    
+    // 设置目标温度
+    function setTemperature() {
+      const targetTemp = document.getElementById('target-temp').value;
+      fetch('/set-temperature?temp=' + targetTemp)
+        .then(res => res.text())
+        .then(txt => alert('温度设置成功'))
+        .catch(err => {
+          console.error('设置温度失败:', err);
+          alert('设置温度失败');
+        });
+    }
+    
+    // 页面加载时获取一次温度并启动自动更新
+    window.onload = function() {
+      getTemperature();
+      startAutoUpdate();
+    };
+  </script>
+</body>
+</html> 
