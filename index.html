@@ -296,6 +296,12 @@
     <div class="button-row">
       <button onclick="setLED()" class="set-btn">设置灯光</button>
     </div>
+    <!-- 新增阀门控制按钮 -->
+    <div class="button-row">
+      <button id="negValveBtn" onclick="toggleNegValve()" class="toggle-btn">负压阀：关闭</button>
+      <button id="valve1Btn" onclick="toggleValve1()" class="toggle-btn">三通阀1：通道A</button>
+      <button id="valve2Btn" onclick="toggleValve2()" class="toggle-btn">三通阀2：通道A</button>
+    </div>
 
     <div class="card temp-control">
       <h3>温度控制</h3>
@@ -328,6 +334,10 @@
       });
     }
     function setLED() {
+      let btn = document.querySelector('.set-btn');
+      btn.textContent = '设置中...';
+      btn.disabled = true;
+      btn.style.backgroundColor = 'var(--accent-color)';
       let params = [];
       for(let i=1;i<=3;i++){
         params.push('r'+i+'='+document.getElementById('r'+i).value);
@@ -337,7 +347,21 @@
       let url = '/set?' + params.join('&');
       fetch(url)
         .then(res => res.text())
-        .then(txt => alert('设置成功'));
+        .then(txt => {
+          btn.textContent = '设置灯光';
+          btn.disabled = false;
+          btn.style.backgroundColor = 'var(--secondary-color)';
+          setTimeout(()=>{
+            btn.style.backgroundColor = 'var(--secondary-color)';
+          }, 200);
+          alert('设置成功');
+        })
+        .catch(err => {
+          btn.textContent = '设置灯光';
+          btn.disabled = false;
+          btn.style.backgroundColor = 'var(--secondary-color)';
+          alert('设置失败');
+        });
     }
     
     // 温度自动更新相关
@@ -397,10 +421,40 @@
         });
     }
     
-    // 页面加载时获取一次温度并启动自动更新
+    // 阀门状态
+    let negValveOpen = false;
+    let valve1ChannelA = true;
+    let valve2ChannelA = true;
+
+    function toggleNegValve() {
+      negValveOpen = !negValveOpen;
+      const btn = document.getElementById('negValveBtn');
+      btn.textContent = '负压阀：' + (negValveOpen ? '开启' : '关闭');
+      btn.style.backgroundColor = negValveOpen ? 'var(--secondary-color)' : 'var(--dark-color)';
+      // 如需联动后端，可在此处fetch('/neg-valve?open=' + (negValveOpen ? 1 : 0))
+    }
+    function toggleValve1() {
+      valve1ChannelA = !valve1ChannelA;
+      const btn = document.getElementById('valve1Btn');
+      btn.textContent = '三通阀1：' + (valve1ChannelA ? '通道A' : '通道B');
+      btn.style.backgroundColor = valve1ChannelA ? 'var(--dark-color)' : 'var(--secondary-color)';
+      // 如需联动后端，可在此处fetch('/valve1?ch=' + (valve1ChannelA ? 'A' : 'B'))
+    }
+    function toggleValve2() {
+      valve2ChannelA = !valve2ChannelA;
+      const btn = document.getElementById('valve2Btn');
+      btn.textContent = '三通阀2：' + (valve2ChannelA ? '通道A' : '通道B');
+      btn.style.backgroundColor = valve2ChannelA ? 'var(--dark-color)' : 'var(--secondary-color)';
+      // 如需联动后端，可在此处fetch('/valve2?ch=' + (valve2ChannelA ? 'A' : 'B'))
+    }
+    // 页面加载时初始化按钮状态
     window.onload = function() {
       getTemperature();
       startAutoUpdate();
+      // 初始化按钮颜色
+      toggleNegValve(); toggleNegValve();
+      toggleValve1(); toggleValve1();
+      toggleValve2(); toggleValve2();
     };
   </script>
 </body>

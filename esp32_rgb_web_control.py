@@ -21,6 +21,16 @@ np1 = neopixel.NeoPixel(machine.Pin(2), MAX_LED)
 np2 = neopixel.NeoPixel(machine.Pin(4), MAX_LED)
 np3 = neopixel.NeoPixel(machine.Pin(5), MAX_LED)
 
+# 新增：初始化阀门IO口
+neg_valve_pin = machine.Pin(12, machine.Pin.OUT)
+valve1_pin = machine.Pin(13, machine.Pin.OUT)
+valve2_pin = machine.Pin(14, machine.Pin.OUT)
+
+# 初始状态全部关闭
+neg_valve_pin.value(0)
+valve1_pin.value(0)
+valve2_pin.value(0)
+
 def scale(val, lum):
     v = int(val * lum / 255)
     return v if v > 0 else (1 if val > 0 and lum > 0 else 0)
@@ -60,6 +70,46 @@ while True:
                 if p.startswith('r3='): r3 = int(p[3:])
                 if p.startswith('g3='): g3 = int(p[3:])
                 if p.startswith('b3='): b3 = int(p[3:])
+        # 新增：负压阀控制
+        elif 'GET /neg-valve?' in request:
+            # 例如 /neg-valve?open=1
+            params = request.split('GET /neg-valve?')[1].split(' ')[0]
+            open_val = 0
+            if 'open=1' in params:
+                open_val = 1
+            neg_valve_pin.value(open_val)
+            response = 'OK'
+            conn.send('HTTP/1.1 200 OK\n')
+            conn.send('Content-Type: text/plain\n')
+            conn.send('Connection: close\n\n')
+            conn.sendall(response)
+            conn.close()
+            continue
+        # 新增：三通阀1控制
+        elif 'GET /valve1?' in request:
+            # 例如 /valve1?ch=A 或 /valve1?ch=B
+            params = request.split('GET /valve1?')[1].split(' ')[0]
+            ch = 'A' if 'ch=A' in params else 'B'
+            valve1_pin.value(0 if ch=='A' else 1)
+            response = 'OK'
+            conn.send('HTTP/1.1 200 OK\n')
+            conn.send('Content-Type: text/plain\n')
+            conn.send('Connection: close\n\n')
+            conn.sendall(response)
+            conn.close()
+            continue
+        # 新增：三通阀2控制
+        elif 'GET /valve2?' in request:
+            params = request.split('GET /valve2?')[1].split(' ')[0]
+            ch = 'A' if 'ch=A' in params else 'B'
+            valve2_pin.value(0 if ch=='A' else 1)
+            response = 'OK'
+            conn.send('HTTP/1.1 200 OK\n')
+            conn.send('Content-Type: text/plain\n')
+            conn.send('Connection: close\n\n')
+            conn.sendall(response)
+            conn.close()
+            continue
         # 先全部清零，再设置前n颗
         for i in range(MAX_LED):
             np1[i] = (0, 0, 0)
